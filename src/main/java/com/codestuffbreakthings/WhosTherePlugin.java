@@ -1,11 +1,8 @@
 package com.codestuffbreakthings;
 
 import com.google.inject.Provides;
-
-import javax.imageio.ImageIO;
 import javax.inject.Inject;
 import javax.swing.*;
-
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -18,12 +15,9 @@ import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
-
 import java.awt.image.BufferedImage;
-import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -40,7 +34,7 @@ public class WhosTherePlugin extends Plugin
 	private WhosThereConfig config;
 
     @Getter
-    private List<WhosTherePlayerData> playerList = new ArrayList<>();
+    private List<WhosTherePlayerData> playerList;
 
     @Inject
     private OverlayManager overlayManager;
@@ -56,14 +50,15 @@ public class WhosTherePlugin extends Plugin
 //    @Inject
 //    private WorldView worldView;
 
-    int playerCount = 0;
+    int playerCount;
 
     private static final String ICON = "magnifyingglass.png";
 
 	@Override
 	protected void startUp() throws Exception
 	{
-        BufferedImage icon = ImageUtil.getResourceStreamFromClass(getClass(), ICON);
+        log.debug("on startUp");
+        BufferedImage icon = ImageUtil.loadImageResource(getClass(), ICON);
         overlayManager.add(overlay);
         panel = new WhosTherePanel(this);
         navButton = NavigationButton.builder()
@@ -73,12 +68,19 @@ public class WhosTherePlugin extends Plugin
                 .panel(panel)
                 .build();
         clientToolbar.addNavigation(navButton);
+        playerList = new ArrayList<>();
+        playerCount = 0;
 	}
 
 	@Override
 	protected void shutDown() throws Exception
 	{
+        log.debug("on shutDown");
 		overlayManager.remove(overlay);
+        clientToolbar.removeNavigation(navButton);
+        panel.removeAll();
+        panel.revalidate();
+        panel.repaint();
 	}
 
 
@@ -114,17 +116,17 @@ public class WhosTherePlugin extends Plugin
 //                        return;
 //                    }
 //                }
-                if(playerList.stream().filter(p -> p.getUsername().equalsIgnoreCase(player.getName())).count() == 0) {
-                log.debug("increasing player count and adding object to list");
-                playerCount++;
-                overlay.updateOverlayPlayerCount(playerCount);
-                playerList.add(data);
-                SwingUtilities.invokeLater(() -> panel.populate(playerList));
+                if(playerList.stream().noneMatch(p -> p.getUsername().equalsIgnoreCase(player.getName()))) {
+                    log.debug("increasing player count and adding object to list");
+                    playerCount++;
+                    overlay.updateOverlayPlayerCount(playerCount);
+                    playerList.add(data);
+                    SwingUtilities.invokeLater(() -> panel.populate(playerList));
                 }
                 break;
             case "remove":
                 log.debug("entering remove switch case");
-                if(playerList.stream().filter(p -> p.getUsername().equalsIgnoreCase(player.getName())).count() > 0) {
+                if(playerList.stream().anyMatch(p -> p.getUsername().equalsIgnoreCase(player.getName()))) {
 //                for(WhosTherePlayerData playerData : playerList){
 //                    if(!playerData.getUsername().equalsIgnoreCase(player.getName())){
 //                        //log.debug("Player {} already does not exist in list, no need to remove", player.getName());
